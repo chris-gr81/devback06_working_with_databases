@@ -35,6 +35,22 @@ async function getCourseByIdFromSupabase(
   return course;
 }
 
+async function getStudentsByCourseIdFromSupabase(
+  courseId: number,
+): Promise<
+  { student: Database["public"]["Tables"]["students"]["Row"] }[] | null
+> {
+  const { data: students, error } = await supabaseClient
+    .from("student_courses")
+    .select("student:students(*)")
+    .eq("course_id", courseId);
+
+  if (error) {
+    throw new InternalServerError("while fetching students by courseId");
+  }
+  return students;
+}
+
 async function createCourseInSupabase(
   courseData: CreateCourseDto,
 ): Promise<Database["public"]["Tables"]["courses"]["Row"]> {
@@ -85,4 +101,5 @@ export {
   createCourseInSupabase as createCourseInDb,
   updateCourseByIdInSupabase as updateCourseByIdInDb,
   deleteCourseByIdFromSupabase as deleteCourseByIdFromDb,
+  getStudentsByCourseIdFromSupabase as getStudentsByCourseIdFromDb,
 };

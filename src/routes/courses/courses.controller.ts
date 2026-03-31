@@ -4,6 +4,7 @@ import {
   deleteCourseById,
   getCourseById,
   getCourses,
+  getStudentsByCourseId,
   updateCourseById,
 } from "./courses.service";
 import { HttpException } from "../../db/error/HttpException";
@@ -30,7 +31,15 @@ courseRouter.get("/:id", async (req, res, next) => {
   }
 });
 
-courseRouter.get("/:id/students", async (req, res, next) => {});
+courseRouter.get("/:id/students", async (req, res, next) => {
+  console.log("Students for course Id:");
+  try {
+    const students = await getStudentsByCourseId(Number(req.params.id));
+    res.status(200).json(students);
+  } catch (err) {
+    next(err);
+  }
+});
 
 courseRouter.post("/", async (req, res, next) => {
   console.log("New course data:", req.body);

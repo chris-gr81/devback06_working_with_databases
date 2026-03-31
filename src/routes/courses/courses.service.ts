@@ -5,6 +5,7 @@ import {
   getCourseByIdFromDb,
   getCoursesFromDb,
   updateCourseByIdInDb,
+  getStudentsByCourseIdFromDb,
 } from "./courses.db.service";
 import { CreateCourseDto } from "./courses.interface";
 
@@ -23,6 +24,13 @@ export async function getCourseById(courseId: number) {
     throw new HttpException(404, `Course with ID ${courseId} not found`);
   }
   return course;
+}
+
+export async function getStudentsByCourseId(courseId: number) {
+  if (!courseId) {
+    throw new HttpException(400, "Course Id is required");
+  }
+  return await getStudentsByCourseIdFromDb(courseId);
 }
 
 export async function createCourse(courseData: CreateCourseDto) {
