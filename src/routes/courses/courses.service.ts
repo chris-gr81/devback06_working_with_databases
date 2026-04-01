@@ -6,8 +6,10 @@ import {
   getCoursesFromDb,
   updateCourseByIdInDb,
   getStudentsByCourseIdFromDb,
+  addStudentToCourseInDb,
+  reomveStudentFromCourseInDb,
 } from "./courses.db.service";
-import { CreateCourseDto } from "./courses.interface";
+import { AddStudentToCourseDto, CreateCourseDto } from "./courses.interface";
 
 export async function getCourses() {
   return await getCoursesFromDb();
@@ -41,6 +43,19 @@ export async function createCourse(courseData: CreateCourseDto) {
   return await createCourseInDb(courseData);
 }
 
+export async function addStudentToCourse(
+  courseId: number,
+  addStudentToCourseData: AddStudentToCourseDto,
+) {
+  if (!courseId) {
+    throw new HttpException(400, "Course ID is required");
+  }
+  if (!addStudentToCourseData.studentId) {
+    throw new HttpException(400, "Student ID is required");
+  }
+  return await addStudentToCourseInDb(courseId, addStudentToCourseData);
+}
+
 export async function updateCourseById(
   courseId: number,
   courseData: CreateCourseDto,
@@ -61,4 +76,17 @@ export async function deleteCourseById(courseId: number) {
   }
 
   return await deleteCourseByIdFromDb(courseId);
+}
+
+export async function removeStudentFromCourse(
+  courseId: number,
+  studentId: number,
+) {
+  if (!courseId) {
+    throw new HttpException(400, "Course ID is required");
+  }
+  if (!studentId) {
+    throw new HttpException(400, "Student ID is required");
+  }
+  return await reomveStudentFromCourseInDb(courseId, studentId);
 }

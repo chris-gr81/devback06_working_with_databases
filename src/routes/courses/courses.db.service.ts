@@ -1,7 +1,7 @@
 import { Database } from "../../db/database.types";
 import { supabaseClient } from "../../db/db";
 import { InternalServerError } from "../../db/error/InternalServerError";
-import { CreateCourseDto } from "./courses.interface";
+import { AddStudentToCourseDto, CreateCourseDto } from "./courses.interface";
 
 async function getCoursesFromSupabase(): Promise<
   Database["public"]["Tables"]["courses"]["Row"][]
@@ -51,6 +51,21 @@ async function getStudentsByCourseIdFromSupabase(
   return students;
 }
 
+async function addStudentToCourseInSupabase(
+  courseId: number,
+  addStundentToCourseData: AddStudentToCourseDto,
+): Promise<void> {
+  const { error } = await supabaseClient.from("student_courses").insert({
+    course_id: courseId,
+    student_id: addStundentToCourseData.studentId,
+  });
+
+  if (error) {
+    console.error("Error adding student to course:", error);
+    throw new InternalServerError("while updating student_courses");
+  }
+}
+
 async function createCourseInSupabase(
   courseData: CreateCourseDto,
 ): Promise<Database["public"]["Tables"]["courses"]["Row"]> {
@@ -95,6 +110,21 @@ async function deleteCourseByIdFromSupabase(courseId: number): Promise<void> {
   }
 }
 
+async function removeStudentFromCourseInSubabase(
+  courseId: number,
+  studentId: number,
+): Promise<void> {
+  const { error } = await supabaseClient
+    .from("student_courses")
+    .delete()
+    .eq("course_id", courseId)
+    .eq("student_id", studentId);
+
+  if (error) {
+    throw new InternalServerError("while removing student from course");
+  }
+}
+
 export {
   getCoursesFromSupabase as getCoursesFromDb,
   getCourseByIdFromSupabase as getCourseByIdFromDb,
@@ -102,4 +132,6 @@ export {
   updateCourseByIdInSupabase as updateCourseByIdInDb,
   deleteCourseByIdFromSupabase as deleteCourseByIdFromDb,
   getStudentsByCourseIdFromSupabase as getStudentsByCourseIdFromDb,
+  addStudentToCourseInSupabase as addStudentToCourseInDb,
+  removeStudentFromCourseInSubabase as reomveStudentFromCourseInDb,
 };

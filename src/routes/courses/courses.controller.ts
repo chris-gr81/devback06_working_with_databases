@@ -1,10 +1,12 @@
 import { Router } from "express";
 import {
+  addStudentToCourse,
   createCourse,
   deleteCourseById,
   getCourseById,
   getCourses,
   getStudentsByCourseId,
+  removeStudentFromCourse,
   updateCourseById,
 } from "./courses.service";
 import { HttpException } from "../../db/error/HttpException";
@@ -36,6 +38,15 @@ courseRouter.get("/:id/students", async (req, res, next) => {
   try {
     const students = await getStudentsByCourseId(Number(req.params.id));
     res.status(200).json(students);
+  } catch (err) {
+    next(err);
+  }
+});
+
+courseRouter.post("/:id/students", async (req, res, next) => {
+  try {
+    addStudentToCourse(Number(req.params.id), req.body);
+    res.status(201).json();
   } catch (err) {
     next(err);
   }
@@ -74,6 +85,24 @@ courseRouter.delete("/:id", async (req, res, next) => {
     deleteCourseById(Number(req.params.id));
     res.status(204).send();
   } catch (err: unknown) {
+    next(err);
+  }
+});
+
+courseRouter.delete("/:id/students/:studentId", async (req, res, next) => {
+  console.log(
+    "Remove student ID: ",
+    req.params.studentId,
+    " from course ID: ",
+    req.params.id,
+  );
+  try {
+    await removeStudentFromCourse(
+      Number(req.params.id),
+      Number(req.params.studentId),
+    );
+    res.status(204).send();
+  } catch (err) {
     next(err);
   }
 });
