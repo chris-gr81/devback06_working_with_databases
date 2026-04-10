@@ -1,7 +1,15 @@
+import { Types } from "mongoose";
 import { Database } from "../../db/database.types";
 import { supabaseClient } from "../../db/db";
 import { InternalServerError } from "../../db/error/InternalServerError";
-import { AddStudentToCourseDto, CreateCourseDto } from "./courses.interface";
+import { addStudentToCourseInDb } from "../student-course/student-course.db.service";
+import { Student, StudentModel } from "../students/student.model";
+import { Course, CourseModel } from "./course.model";
+import {
+  AddStudentToCourseDto,
+  AddStudentToCourseMongoDto,
+  CreateCourseDto,
+} from "./courses.interface";
 
 async function getCoursesFromSupabase(): Promise<
   Database["public"]["Tables"]["courses"]["Row"][]
@@ -18,12 +26,12 @@ async function getCoursesFromSupabase(): Promise<
 }
 
 async function getCourseByIdFromSupabase(
-  courseId: number,
+  courseId: string,
 ): Promise<Database["public"]["Tables"]["courses"]["Row"] | null> {
   const { data: course, error } = await supabaseClient
     .from("courses")
-    .select("*")
-    .eq("id", courseId)
+    .select("*, students:student_courses(student:students(*))")
+    .eq("id", Number(courseId))
     .limit(1)
     .maybeSingle();
 
@@ -32,18 +40,30 @@ async function getCourseByIdFromSupabase(
   }
 
   console.log("Course", course);
-  return course;
+
+  if (!course) {
+    return null;
+  }
+
+  const flatCourse = {
+    ...course,
+    students: course.students.map((studentEntry) => {
+      return studentEntry.student;
+    }),
+  };
+
+  return flatCourse;
 }
 
 async function getStudentsByCourseIdFromSupabase(
-  courseId: number,
+  courseId: string,
 ): Promise<
   { student: Database["public"]["Tables"]["students"]["Row"] }[] | null
 > {
   const { data: students, error } = await supabaseClient
     .from("student_courses")
     .select("student:students(*)")
-    .eq("course_id", courseId);
+    .eq("course_id", Number(courseId));
 
   if (error) {
     throw new InternalServerError("while fetching students by courseId");
@@ -52,11 +72,11 @@ async function getStudentsByCourseIdFromSupabase(
 }
 
 async function addStudentToCourseInSupabase(
-  courseId: number,
+  courseId: string,
   addStundentToCourseData: AddStudentToCourseDto,
 ): Promise<void> {
   const { error } = await supabaseClient.from("student_courses").insert({
-    course_id: courseId,
+    course_id: Number(courseId),
     student_id: addStundentToCourseData.studentId,
   });
 
@@ -83,13 +103,13 @@ async function createCourseInSupabase(
 }
 
 async function updateCourseByIdInSupabase(
-  courseId: number,
+  courseId: string,
   courseData: CreateCourseDto,
 ): Promise<Database["public"]["Tables"]["courses"]["Row"]> {
   const { data: course, error } = await supabaseClient
     .from("courses")
     .update({ name: courseData.name })
-    .eq("id", courseId)
+    .eq("id", Number(courseId))
     .select()
     .single();
 
@@ -100,11 +120,11 @@ async function updateCourseByIdInSupabase(
   return course;
 }
 
-async function deleteCourseByIdFromSupabase(courseId: number): Promise<void> {
+async function deleteCourseByIdFromSupabase(courseId: string): Promise<void> {
   const { error } = await supabaseClient
     .from("courses")
     .delete()
-    .eq("id", courseId);
+    .eq("id", Number(courseId));
   if (error) {
     throw new InternalServerError("while deleting course");
   }
@@ -125,13 +145,98 @@ async function removeStudentFromCourseInSubabase(
   }
 }
 
+async function createCourseInMongoDb(
+  courseData: CreateCourseDto,
+): Promise<Course> {
+  const course = new CourseModel({ name: courseData.name });
+  return await course.save();
+}
+
+async function getCoursesFromMongoDb(): Promise<Course[]> {
+  return await CourseModel.find().populate("students").exec();
+}
+
+async function getCourseByIdFromMongoDb(
+  courseId: string,
+): Promise<Course | null> {
+  const course = await CourseModel.aggregate()
+    .match({
+      _id: new Types.ObjectId(courseId),
+    })
+    .lookup({
+      from: "studentcourses",
+      localField: "_id",
+      foreignField: "courseId",
+      as: "result",
+    })
+    .unwind({ path: "$result" })
+    .lookup({
+      from: "students",
+      localField: "result.studentId",
+      foreignField: "_id",
+      as: "students",
+    })
+    .unwind({ path: "$students" })
+    .group({
+      _id: "$_id",
+      name: { $first: "$name" },
+      createdAt: { $first: "createdAt" },
+      students: { $push: "$students" },
+    });
+
+  console.log("Fetched students for course:", courseId, course);
+  if (course.length === 0) {
+    throw new Error(`No course found with ID: ${courseId} `);
+  }
+  return course[0];
+}
+
+async function updateCourseByIdInMongoDb(
+  courseId: string,
+  courseData: CreateCourseDto,
+): Promise<Course | null> {
+  const course = await CourseModel.findByIdAndUpdate(
+    courseId,
+    {
+      name: courseData.name,
+    },
+    { returnDocument: "after" },
+  ).exec();
+  return course;
+}
+
+async function deleteCourseByIdInMongoDb(courseId: string): Promise<void> {
+  await CourseModel.findByIdAndDelete(courseId).exec();
+}
+
+async function getStudentByCourseIdFromMongoDb(
+  courseId: string,
+): Promise<Student[] | null> {
+  const students = await StudentModel.find({
+    courses: { $in: [courseId] },
+  }).exec();
+  return students;
+}
+
+async function addStudentToCourseInMongoDb(
+  courseId: string,
+  addStudentToCourseData: AddStudentToCourseMongoDto,
+) {
+  const studentCourse = await addStudentToCourseInDb(
+    courseId,
+    addStudentToCourseData.studentId,
+  );
+
+  return studentCourse;
+}
+
 export {
-  getCoursesFromSupabase as getCoursesFromDb,
-  getCourseByIdFromSupabase as getCourseByIdFromDb,
-  createCourseInSupabase as createCourseInDb,
-  updateCourseByIdInSupabase as updateCourseByIdInDb,
-  deleteCourseByIdFromSupabase as deleteCourseByIdFromDb,
-  getStudentsByCourseIdFromSupabase as getStudentsByCourseIdFromDb,
-  addStudentToCourseInSupabase as addStudentToCourseInDb,
+  getCoursesFromMongoDb as getCoursesFromDb,
+  getCourseByIdFromMongoDb as getCourseByIdFromDb,
+  createCourseInMongoDb as createCourseInDb,
+  updateCourseByIdInMongoDb as updateCourseByIdInDb,
+  deleteCourseByIdInMongoDb as deleteCourseByIdFromDb,
+  getStudentByCourseIdFromMongoDb as getStudentsByCourseIdFromDb,
+  addStudentToCourseInMongoDb as addStudentToCourseInDb,
   removeStudentFromCourseInSubabase as reomveStudentFromCourseInDb,
 };

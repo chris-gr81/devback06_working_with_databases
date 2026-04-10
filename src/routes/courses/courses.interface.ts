@@ -5,3 +5,7 @@ export interface CreateCourseDto {
 export interface AddStudentToCourseDto {
   studentId: number;
 }
+
+export interface AddStudentToCourseMongoDto {
+  studentId: string;
+}

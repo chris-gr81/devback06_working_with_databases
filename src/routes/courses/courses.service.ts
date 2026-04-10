@@ -9,13 +9,17 @@ import {
   addStudentToCourseInDb,
   reomveStudentFromCourseInDb,
 } from "./courses.db.service";
-import { AddStudentToCourseDto, CreateCourseDto } from "./courses.interface";
+import {
+  AddStudentToCourseDto,
+  AddStudentToCourseMongoDto,
+  CreateCourseDto,
+} from "./courses.interface";
 
 export async function getCourses() {
   return await getCoursesFromDb();
 }
 
-export async function getCourseById(courseId: number) {
+export async function getCourseById(courseId: string) {
   if (!courseId) {
     throw new HttpException(400, "Course Id is required");
   }
@@ -28,7 +32,7 @@ export async function getCourseById(courseId: number) {
   return course;
 }
 
-export async function getStudentsByCourseId(courseId: number) {
+export async function getStudentsByCourseId(courseId: string) {
   if (!courseId) {
     throw new HttpException(400, "Course Id is required");
   }
@@ -44,8 +48,8 @@ export async function createCourse(courseData: CreateCourseDto) {
 }
 
 export async function addStudentToCourse(
-  courseId: number,
-  addStudentToCourseData: AddStudentToCourseDto,
+  courseId: string,
+  addStudentToCourseData: AddStudentToCourseMongoDto,
 ) {
   if (!courseId) {
     throw new HttpException(400, "Course ID is required");
@@ -53,11 +57,15 @@ export async function addStudentToCourse(
   if (!addStudentToCourseData.studentId) {
     throw new HttpException(400, "Student ID is required");
   }
-  return await addStudentToCourseInDb(courseId, addStudentToCourseData);
+  try {
+    return await addStudentToCourseInDb(courseId, addStudentToCourseData);
+  } catch (err: any) {
+    throw new HttpException(500, "Failed to add student to course");
+  }
 }
 
 export async function updateCourseById(
-  courseId: number,
+  courseId: string,
   courseData: CreateCourseDto,
 ) {
   if (!courseId) {
@@ -70,7 +78,7 @@ export async function updateCourseById(
   return await updateCourseByIdInDb(courseId, courseData);
 }
 
-export async function deleteCourseById(courseId: number) {
+export async function deleteCourseById(courseId: string) {
   if (!courseId) {
     throw new Error("Course ID is required");
   }

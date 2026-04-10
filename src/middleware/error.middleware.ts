@@ -4,9 +4,9 @@ import { InternalServerError } from "../db/error/InternalServerError";
 
 export function errorMiddleware(
   err: any,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ) {
   console.error(err);
   if (err instanceof HttpException || err instanceof InternalServerError) {

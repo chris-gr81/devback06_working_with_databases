@@ -1,18 +1,23 @@
 import { HttpException } from "../../db/error/HttpException";
 import {
+  addCourseToStudentInDb,
   createStudentInDb,
   deleteStudentByIdFromDb,
   getStudentByIdFromDb,
   getStudentsFromDb,
   updateStudentByIdInDb,
 } from "./students.db.service";
-import { CreateStudentDto } from "./students.interface";
+import {
+  AddCourseToStudentDto,
+  AddCourseToStudentMongoDto,
+  CreateStudentDto,
+} from "./students.interface";
 
 export async function getStudents() {
   return await getStudentsFromDb();
 }
 
-export async function getStudentsById(studentId: number) {
+export async function getStudentsById(studentId: string) {
   if (!studentId) {
     throw new HttpException(400, "Student Id is required");
   }
@@ -30,8 +35,28 @@ export async function createStudent(studentData: CreateStudentDto) {
   return await createStudentInDb(studentData);
 }
 
+export async function addCourseToStudent(
+  studentId: string,
+  addCourseToStudentData: AddCourseToStudentMongoDto,
+) {
+  if (!studentId) {
+    throw new HttpException(400, "Student ID is required");
+  }
+  if (!addCourseToStudentData.courseId) {
+    throw new HttpException(400, "Course ID is required");
+  }
+  try {
+    return await addCourseToStudentInDb(studentId, addCourseToStudentData);
+  } catch (err: any) {
+    throw new HttpException(
+      500,
+      err?.message ?? "Failed to add student to course",
+    );
+  }
+}
+
 export async function updateStudentById(
-  studentId: number,
+  studentId: string,
   studentData: CreateStudentDto,
 ) {
   if (!studentId) {
@@ -43,7 +68,7 @@ export async function updateStudentById(
   return await updateStudentByIdInDb(studentId, studentData);
 }
 
-export async function deleteStudentById(studentId: number) {
+export async function deleteStudentById(studentId: string) {
   if (!studentId) {
     throw new HttpException(400, "Student ID is required");
   }
